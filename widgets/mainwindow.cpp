@@ -216,6 +216,15 @@ MainWindow::MainWindow(QWidget * parent) : QMainWindow{parent}, evilHack{[this](
         state->viewer->gpuRendering = !state->viewer->gpuRendering;
     });
 
+    createGlobalAction(state->mainWindow, Qt::Key_F8, [](){
+        const auto cpos = state->viewerState->currentPosition.cube(128, 1) - state->M/2;
+        for (int z = cpos.z; z < cpos.z + state->M; ++z)
+        for (int y = cpos.y; y < cpos.y + state->M; ++y)
+        for (int x = cpos.x; x < cpos.x + state->M; ++x) {
+            Loader::Controller::singleton().markOcCubeAsModified({x, y, z}, 1);
+        }
+    });
+
     addDockWidget(Qt::RightDockWidgetArea, &cheatsheet);
     QObject::connect(&cheatsheet, &Cheatsheet::anchorClicked, [this](const QUrl & link) {
         auto anchor = link.toString();
@@ -747,6 +756,7 @@ void MainWindow::closeEvent(QCloseEvent *event) {
     // event loop will stop after this
     QApplication::closeAllWindows();// generates – otherwise missing – hideEvents for saveGeometry
     event->accept();
+    QCoreApplication::quit();
 }
 
 //file menu functionality
@@ -1504,7 +1514,8 @@ void MainWindow::updateCompressionRatioDisplay() {
 }
 
 bool MainWindow::event(QEvent *event) {
-    if (event->type() == QEvent::WindowActivate) {
+    if (/*!state->quitSignal && */event->type() == QEvent::WindowActivate) {
+        qDebug() << "QEvent::WindowActivate";
         state->viewer->run();
     }
     return QMainWindow::event(event);
