@@ -30,6 +30,7 @@
 #include "mainwindow.h"
 #include "network.h"
 #include "scriptengine/scripting.h"
+#include <skeleton/NeuroLucida.h>
 #include "skeleton/node.h"
 #include "skeleton/skeleton_dfs.h"
 #include "skeleton/skeletonizer.h"
@@ -792,11 +793,15 @@ bool MainWindow::openFileDispatch(QStringList fileNames, const bool mergeAll, co
     bool multipleFiles = fileNames.size() > 1;
     Session::singleton().guiMode = GUIMode::None; // always reset to default gui
     auto nmlEndIt = std::stable_partition(std::begin(fileNames), std::end(fileNames), [](const QString & elem){
-        return QFileInfo(elem).suffix() == "nml";
+        return QFileInfo(elem).suffix().toLower() == "nml";
+    });
+    auto ascEndIt = std::stable_partition(nmlEndIt, std::end(fileNames), [](const QString & elem){
+        return QFileInfo(elem).suffix().toLower() == "asc";
     });
 
     auto nmls = std::vector<QString>(std::begin(fileNames), nmlEndIt);
-    auto zips = std::vector<QString>(nmlEndIt, std::end(fileNames));
+    auto acss = std::vector<QString>(nmlEndIt, ascEndIt);
+    auto zips = std::vector<QString>(ascEndIt, std::end(fileNames));
 
     try {
         LoadingCursor loadingcursor;
@@ -807,6 +812,10 @@ bool MainWindow::openFileDispatch(QStringList fileNames, const bool mergeAll, co
             state->viewer->skeletonizer->loadXmlSkeleton(file, mergeSkeleton, treeCmtOnMultiLoad);
             updateRecentFile(filename);
             mergeSkeleton |= multipleFiles;// multiple files have to be merged
+        }
+        for (const auto & filename : acss) {
+            parseNeuroLucida(QFile{filename});
+            updateRecentFile(filename);
         }
         for (const auto & filename : zips) {
             const QString treeCmtOnMultiLoad = multipleFiles ? QFileInfo(filename).fileName() : "";
@@ -836,7 +845,7 @@ bool MainWindow::openFileDispatch(QStringList fileNames, const bool mergeAll, co
     Session::singleton().unsavedChanges = multipleFiles || mergeSkeleton || mergeSegmentation; //merge implies changes
     if (!mergeSkeleton && !mergeSegmentation) { // if an annotation was already open don't change its filename, otherwise…
         // if multiple files are loaded, let KNOSSOS generate a new filename. Otherwise either an .nml or a .k.zip was loaded
-        Session::singleton().annotationFilename = multipleFiles ? "" : !nmls.empty() ? nmls.front() : zips.front();
+        Session::singleton().annotationFilename = multipleFiles ? "" : !nmls.empty() ? nmls.front() : !acss.empty() ? acss.front() : zips.front();
     }
     updateTitlebar();
 
@@ -877,10 +886,11 @@ bool MainWindow::newAnnotationSlot() {
 void MainWindow::openSlot() {
     const auto choices = tr("KNOSSOS annotation file(s) "
 #ifdef Q_OS_MAC
-                            "(*.zip *.nml)");
+                            "(*.zip"
 #else
-                            "(*.k.zip *.nml)");
+                            "(*.k.zip"
 #endif
+                            " *.nml *.asc)");
     const QStringList fileNames = state->viewer->suspend([this, &choices]{
         return QFileDialog::getOpenFileNames(this, "Open annotation file(s)", openFileDirectory, choices);
     });
@@ -1320,7 +1330,7 @@ void MainWindow::dropEvent(QDropEvent *event) {
 }
 
 void MainWindow::dragEnterEvent(QDragEnterEvent * event) {
-    const std::vector<QString> validExtensions = {".k.zip", ".nml", ".k.conf", "knossos.conf", "ariadne.conf", ".pyknossos.conf", ".pyk.conf"};
+    const std::vector<QString> validExtensions = {".k.zip", ".nml", ".asc", ".k.conf", "knossos.conf", "ariadne.conf", ".pyknossos.conf", ".pyk.conf"};
     if(event->mimeData()->hasUrls()) {
         QList<QUrl> urls = event->mimeData()->urls();
         for (auto && url : urls) {
@@ -1328,7 +1338,7 @@ void MainWindow::dragEnterEvent(QDragEnterEvent * event) {
             if (url.isLocalFile()) {
                 const auto fileName(url.toLocalFile());
                 for (const auto extension : validExtensions) {
-                    if (fileName.endsWith(extension)) {
+                    if (fileName.endsWith(extension, Qt::CaseInsensitive)) {
                         event->accept();
                     }
                 }
