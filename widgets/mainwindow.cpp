@@ -792,7 +792,7 @@ bool MainWindow::openFileDispatch(QStringList fileNames, const bool mergeAll, co
     bool multipleFiles = fileNames.size() > 1;
     Session::singleton().guiMode = GUIMode::None; // always reset to default gui
     auto nmlEndIt = std::stable_partition(std::begin(fileNames), std::end(fileNames), [](const QString & elem){
-        return QFileInfo(elem).suffix() == "nml";
+        return QFileInfo(elem).suffix() == "nml" || QFileInfo(elem).suffix() == "nmx";
     });
 
     auto nmls = std::vector<QString>(std::begin(fileNames), nmlEndIt);
@@ -877,9 +877,9 @@ bool MainWindow::newAnnotationSlot() {
 void MainWindow::openSlot() {
     const auto choices = tr("KNOSSOS annotation file(s) "
 #ifdef Q_OS_MAC
-                            "(*.zip *.nml)");
+                            "(*.zip *.nml *.nmx)");
 #else
-                            "(*.k.zip *.nml)");
+                            "(*.k.zip *.nml *.nmx)");
 #endif
     const QStringList fileNames = state->viewer->suspend([this, &choices]{
         return QFileDialog::getOpenFileNames(this, "Open annotation file(s)", openFileDirectory, choices);
@@ -936,7 +936,7 @@ try {
     if (filename.isEmpty()) {
         filename = annotationFileDefaultPath();
     } else {// to prevent update of the initial default path
-        if (filename.endsWith(".nml")) {
+        if (filename.endsWith(".nml") || filename.endsWith(".nmx")) {
             filename.chop(4);
             filename += ".k.zip";
         }
@@ -1320,7 +1320,7 @@ void MainWindow::dropEvent(QDropEvent *event) {
 }
 
 void MainWindow::dragEnterEvent(QDragEnterEvent * event) {
-    const std::vector<QString> validExtensions = {".k.zip", ".nml", ".k.conf", "knossos.conf", "ariadne.conf", ".pyknossos.conf", ".pyk.conf"};
+    const std::vector<QString> validExtensions = {".k.zip", ".nml", ".nmx", ".k.conf", "knossos.conf", "ariadne.conf", ".pyknossos.conf", ".pyk.conf"};
     if(event->mimeData()->hasUrls()) {
         QList<QUrl> urls = event->mimeData()->urls();
         for (auto && url : urls) {
