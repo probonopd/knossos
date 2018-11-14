@@ -92,6 +92,9 @@ struct LayerRenderSettings {
     double opacity{1.0};
     double rangeDelta{1.};
     double bias{0.};
+    bool combineSlicesEnabled{false};
+    bool combineSlicesXyOnly{true};
+    int combineSlices{4};
     QOpenGLTexture::Filter textureFilter;
     QColor color{Qt::white};
 };
