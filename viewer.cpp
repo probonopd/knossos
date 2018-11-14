@@ -513,7 +513,7 @@ void Viewer::vpGenerateTexture(ViewportOrtho & vp, const std::size_t layerId) {
     multiSlices.resize(2 * multiSliceiMax);
     for (int multiSlicei{-multiSliceiMax}; multiSlicei <= multiSliceiMax; ++multiSlicei) {
         const auto cubeEdgeLen = Dataset::current().cubeEdgeLength;
-        const auto offset = vp.n * multiSlicei;
+        const auto offset = vp.n * multiSlicei * Dataset::current().magnification;
         const auto offsetCube = (state->viewerState->currentPosition + offset).cube(cubeEdgeLen, Dataset::datasets[layerId].magnification) - state->viewerState->currentPosition.cube(cubeEdgeLen, Dataset::datasets[layerId].magnification);
         const CoordInCube currentPosition_dc = (state->viewerState->currentPosition + offset).capped(Session::singleton().movementAreaMin, Session::singleton().movementAreaMax).insideCube(cubeEdgeLen, Dataset::current().magnification);
 
