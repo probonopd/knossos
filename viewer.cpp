@@ -263,7 +263,7 @@ const auto datasetAdjustment = [](auto layerId, auto index){
     }
 };
 
-void Viewer::dcSliceExtract(std::uint8_t * datacube, Coordinate cubePosInAbsPx, std::uint8_t * slice, ViewportOrtho & vp, const std::size_t layerId) {
+void Viewer::dcSliceExtract(std::uint8_t * datacube, Coordinate cubePosInAbsPx, std::uint8_t * slice, ViewportOrtho & vp, const std::size_t layerId, const bool mip) {
     const auto & session = Session::singleton();
     const Coordinate areaMinCoord = {session.movementAreaMin.x,
                                      session.movementAreaMin.y,
@@ -312,10 +312,16 @@ void Viewer::dcSliceExtract(std::uint8_t * datacube, Coordinate cubePosInAbsPx, 
                     r *= d; g *= d; b *= d;
                 }
             }
-            slice[0] = r;
-            slice[1] = g;
-            slice[2] = b;
-            slice[3] = 255;
+            if (mip) {
+                slice[0] = std::min(slice[0], r);
+                slice[1] = std::min(slice[1], g);
+                slice[2] = std::min(slice[2], b);
+            } else {
+                slice[0] = r;
+                slice[1] = g;
+                slice[2] = b;
+                slice[3] = 255;
+            }
 
             datacube += voxelIncrement;
             slice += texNext;
@@ -505,12 +511,10 @@ void Viewer::vpGenerateTexture(ViewportOrtho & vp, const std::size_t layerId) {
         vpGenerateTexture(static_cast<ViewportArb&>(vp), layerId);
         return;
     }
-    static std::vector<std::vector<std::uint8_t>> multiSlices;
-    static std::vector<std::uint8_t> texData;// reallocation for every run would be a waste
     const int multiSliceiMax = viewerState.layerRenderSettings[layerId].combineSlicesEnabled
             * viewerState.layerRenderSettings[layerId].combineSlices
             * ((vp.viewportType == VIEWPORT_XY) || !viewerState.layerRenderSettings[layerId].combineSlicesXyOnly);
-    multiSlices.resize(2 * multiSliceiMax);
+    static std::vector<std::uint8_t> texData;// reallocation for every run would be a waste
     for (int multiSlicei{-multiSliceiMax}; multiSlicei <= multiSliceiMax; ++multiSlicei) {
         const auto cubeEdgeLen = Dataset::current().cubeEdgeLength;
         const auto offset = vp.n * multiSlicei * Dataset::current().magnification;
@@ -586,7 +590,7 @@ void Viewer::vpGenerateTexture(ViewportOrtho & vp, const std::size_t layerId) {
                         if (Dataset::datasets[layerId].isOverlay()) {
                             ocSliceExtract(reinterpret_cast<std::uint64_t *>(cube) + slicePositionWithinCube, cubePosInAbsPx, texData.data() + index, vp, layerId);
                         } else {
-                            dcSliceExtract(reinterpret_cast<std::uint8_t  *>(cube) + slicePositionWithinCube, cubePosInAbsPx, texData.data() + index, vp, layerId);
+                            dcSliceExtract(reinterpret_cast<std::uint8_t  *>(cube) + slicePositionWithinCube, cubePosInAbsPx, texData.data() + index, vp, layerId, multiSlicei != -multiSliceiMax);
                         }
                     } else {
                         for (int y = y_px; y < y_px + cubeEdgeLen; ++y) {
@@ -598,14 +602,6 @@ void Viewer::vpGenerateTexture(ViewportOrtho & vp, const std::size_t layerId) {
             }
         }
         sync.waitForFinished();
-        if (multiSlicei != multiSliceiMax) {// the last one is available in texData anyway
-            multiSlices[multiSliceiMax + multiSlicei] = texData;
-        }
-    }
-    for (const auto & slice : multiSlices) {
-        for (std::size_t i{0}; i < texData.size(); ++i) {
-            texData[i] = std::min(texData[i], slice[i]);
-        }
     }
     vp.texture.texHandle[layerId].bind();
     glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, state->viewerState->texEdgeLength, state->viewerState->texEdgeLength, GL_RGBA, GL_UNSIGNED_BYTE, texData.data());
