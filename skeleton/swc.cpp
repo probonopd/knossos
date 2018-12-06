@@ -20,10 +20,17 @@ void parseSWC(QIODevice && file) {
         const auto & attr = _attr(ctx);
         const auto pos = floatCoordinate(at_c<2>(attr), at_c<3>(attr), at_c<4>(attr)) * 1000.0 / Dataset::current().scale;
         const auto radius = at_c<5>(attr) * 1000.0 / Dataset::current().scale.x;
-        auto node = Skeletonizer::singleton().addNode(at_c<0>(attr), radius, treeID, pos, VIEWPORT_UNDEFINED, 1, boost::none, false);
-        if (const auto connectedNode = Skeletonizer::singleton().findNodeByNodeID(at_c<6>(attr))) {
-            Skeletonizer::singleton().addSegment(*connectedNode, node.get());
+        auto src = at_c<0>(attr);
+        auto trg = at_c<6>(attr);
+        if (src < trg) {
+            std::swap(src, trg);
         }
+        try {
+            auto node = Skeletonizer::singleton().addNode(src, radius, treeID, pos, VIEWPORT_UNDEFINED, 1, boost::none, false);
+            if (const auto connectedNode = Skeletonizer::singleton().findNodeByNodeID(trg)) {
+                Skeletonizer::singleton().addSegment(*connectedNode, node.get());
+            }
+        } catch(...) {}
     };
     using namespace boost::spirit::x3;
     const auto comment_ = lexeme['#' >> *(char_ - eol) >> (eol|eoi)];
