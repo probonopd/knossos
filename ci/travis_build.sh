@@ -1,7 +1,13 @@
 #!/bin/bash
 set -euxo pipefail
 
-pacman -Syu --noconfirm
+file /usr/lib/libQt5Core.so.5.11.2
+/usr/lib/libQt5Core.so.5.11.2
+
+time pacman -Syu --noconfirm
+
+file /usr/lib/libQt5Core.so.5.12.0
+/usr/lib/libQt5Core.so.5.12.0
 
 cd ~
 
@@ -9,10 +15,10 @@ cd ~
 mkdir knossos-build
 cd knossos-build
 cmake -G Ninja -DCMAKE_BUILD_TYPE=RELEASE -DCMAKE_PREFIX_PATH="/root/PythonQt-install/lib/cmake/" ../knossos
-ninja
+time ninja
 
 # create AppImage
-../knossos/installer/create_appimage.sh
+time ../knossos/installer/create_appimage.sh
 
 # Deploy
 BRANCH_PREFIX=""
