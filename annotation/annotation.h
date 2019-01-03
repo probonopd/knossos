@@ -32,6 +32,8 @@
 #include <QString>
 #include <QTimer>
 
+#include <optional>
+
 enum class GUIMode {
     None,
     ProofReading
@@ -64,6 +66,7 @@ class Annotation : public QObject {
 
     static const int TIME_SLICE_MS = 60 * 1000;
 
+    std::optional<int> annotationTimeMax = 0;
     int annotationTimeMilliseconds = 0;
     bool timeSliceActivity = false;
     QTimer annotationTimer;
@@ -96,13 +99,16 @@ public:
         static Annotation session;
         return session;
     }
+    void checkAnnotationTimeLimit();
     void clearAnnotation();
     decltype(annotationTimeMilliseconds) getAnnotationTime() const;
     void setAnnotationTime(const decltype(annotationTimeMilliseconds) & ms);
+    void setAnnotationTimeLimit(const decltype(annotationTimeMilliseconds) & ms);
     decltype(annotationTimeMilliseconds) currentTimeSliceMs() const;
 
 signals:
     void annotationTimeChanged(const QString & timeString);
+    void annotationTimeLimitReached();
     void autoSaveSignal();
     void clearedAnnotation();
     void movementAreaChanged();

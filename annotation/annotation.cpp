@@ -64,6 +64,7 @@ void Annotation::clearAnnotation() {
     Segmentation::singleton().clear();
     resetMovementArea();
     setAnnotationTime(0);
+    annotationTimeMax = std::nullopt;
     annotationFilename = "";
     extraFiles.clear();
     emit clearedAnnotation();
@@ -90,6 +91,12 @@ decltype(Annotation::annotationTimeMilliseconds) Annotation::getAnnotationTime()
     return annotationTimeMilliseconds;
 }
 
+void Annotation::checkAnnotationTimeLimit() {
+    if (annotationTimeMax && annotationTimeMilliseconds >= annotationTimeMax.value()) {
+        emit annotationTimeLimitReached();
+    }
+}
+
 void Annotation::setAnnotationTime(const decltype(annotationTimeMilliseconds) & ms) {
     annotationTimeMilliseconds = ms;
 
@@ -98,6 +105,12 @@ void Annotation::setAnnotationTime(const decltype(annotationTimeMilliseconds) & 
     const auto minutes = absoluteMinutes % 60;
 
     emit annotationTimeChanged(QString("%1:%2 h annotation time").arg(hours).arg(minutes, 2, 10, QChar('0')));
+    checkAnnotationTimeLimit();
+}
+
+void Annotation::setAnnotationTimeLimit(const decltype(annotationTimeMilliseconds) & ms) {
+    annotationTimeMax = ms;
+    checkAnnotationTimeLimit();
 }
 
 decltype(Annotation::annotationTimeMilliseconds) Annotation::currentTimeSliceMs() const {

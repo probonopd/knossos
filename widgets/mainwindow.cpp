@@ -129,6 +129,17 @@ MainWindow::MainWindow(QWidget * parent) : QMainWindow{parent}, evilHack{[this](
     QObject::connect(&Segmentation::singleton(), &Segmentation::removedRow, this, &MainWindow::notifyUnsavedChanges);
 
     QObject::connect(&Annotation::singleton(), &Annotation::autoSaveSignal, [this](){ save(); });
+    QObject::connect(&Annotation::singleton(), &Annotation::annotationTimeLimitReached, [this](){
+        QMessageBox timeLimitBox{this};
+        timeLimitBox.setIcon(QMessageBox::Warning);
+        timeLimitBox.setText(tr("Time limit reached."));
+        timeLimitBox.setInformativeText(tr("The time limit for this task has been exceeded. It will now be submitted."));
+        timeLimitBox.setDetailedText(QString::number(Annotation::singleton().getAnnotationTime() / 1e3));
+        timeLimitBox.exec();
+
+        widgetContainer.taskManagementWidget.show();
+        widgetContainer.taskManagementWidget.submit(true);
+    });
 
     createToolbars();
     createMenus();
